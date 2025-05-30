@@ -851,3 +851,89 @@ g .operator-stats:hover {
     font-family: 'Glyphicons Halflings';
     content: "\e252";
 }
+
+.tasks-grid {
+    height: 100%;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+
+.multi-line-header .ag-header-cell-label {
+    white-space: normal;
+    text-align: center;
+}
+
+.ag-theme-custom {
+    --ag-background-color: #353944; /* Background color */
+    --ag-header-background-color: transparent;/* Header background */
+    --ag-header-text-color: #cecece; /* Header text color */
+    --ag-row-hover-color: #cecece; /* Row hover background */
+    --ag-border-color: transparent;/* Border color */
+    --ag-font-family: "Roboto", "Helvetica Neue", Helvetica, Arial, sans-serif; /* Font family */
+    --ag-font-size: 14px; /* Font size */
+    --ag-row-even-color: transparent; /* Even row background */
+    --ag-row-odd-color: #353944; /* Odd row background */
+    --ag-selected-row-color: #98e8ff; /* Selected row background */
+    --ag-text-color: #cecece; /* Default text color */
+}
+
+.ag-theme-custom .ag-header {
+    background-color: var(--ag-header-background-color) !important;
+    color: var(--ag-header-text-color);
+    font-weight: bold;
+    border-bottom: 1px solid var(--ag-header-text-color) !important; /* Add bottom border to header */
+}
+
+.ag-theme-custom .ag-header-cell {
+    border: none !important;
+    border-right: none !important;
+    border-bottom: none !important;
+}
+
+.ag-theme-custom .ag-row {
+    background-color: var(--ag-row-even-color);
+}
+
+.ag-theme-custom .ag-row:nth-child(odd) {
+    background-color: var(--ag-row-odd-color);
+}
+
+.ag-theme-custom .ag-row-hover {
+    background-color: var(--ag-row-hover-color);
+}
+
+.ag-theme-custom .ag-row-selected {
+    background-color: var(--ag-selected-row-color);
+    color: var(--ag-text-color);
+}
+
+.ag-theme-custom .ag-cell {
+    border: none; /* Remove border between cells */
+    color: var(--ag-text-color);
+    font-family: var(--ag-font-family);
+    font-size: var(--ag-font-size);
+}
+
+/* Remove outer borders of the table */
+.ag-theme-custom .ag-root-wrapper {
+    border: none !important;
+}
+
+.ag-theme-custom .ag-root-wrapper-body {
+    border: none !important;
+}
+
+.ag-theme-alpine-dark.ag-theme-custom {
+    background-color: transparent !important;
+}
+
+.ag-theme-alpine-dark.ag-theme-custom .ag-root-wrapper {
+    background-color: transparent !important;
+}
+
+.ag-theme-alpine-dark.ag-theme-custom .ag-header {
+    background-color: transparent !important;
+}

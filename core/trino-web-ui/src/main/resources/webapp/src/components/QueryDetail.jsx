@@ -13,8 +13,10 @@
  */
 
 import React from 'react'
-import Reactable from 'reactable'
-import { SqlBlock } from './SqlBlock'
+import { AgGridReact } from 'ag-grid-react'
+import 'ag-grid-community/styles/ag-grid.css'
+import 'ag-grid-community/styles/ag-theme-alpine.css'
+import { PauseIconHeader, PlayIconHeader, BookmarkIconHeader, OkIconHeader } from './HeaderComponents'
 
 import {
     addToHistory,
@@ -39,12 +41,6 @@ import {
     precisionRound,
 } from '../utils'
 import { QueryHeader } from './QueryHeader'
-
-const Table = Reactable.Table,
-    Thead = Reactable.Thead,
-    Th = Reactable.Th,
-    Tr = Reactable.Tr,
-    Td = Reactable.Td
 
 class TaskList extends React.Component {
     static removeQueryId(id) {
@@ -97,6 +93,13 @@ class TaskList extends React.Component {
         }
     }
 
+    static onGridReady = (params) => {
+        params.api.getAllGridColumns().forEach((column) => {
+            params.api.setColumnWidths([{ key: column, newWidth: 50 }])
+        })
+        params.api.autoSizeAllColumns(false)
+    }
+
     render() {
         const tasks = this.props.tasks
         const taskRetriesEnabled = this.props.taskRetriesEnabled
@@ -113,163 +116,122 @@ class TaskList extends React.Component {
 
         const showPortNumbers = TaskList.showPortNumbers(tasks)
 
-        const renderedTasks = tasks.map((task) => {
+        const columnDefs = [
+            {
+                headerName: 'ID',
+                field: 'id',
+                sortable: true,
+                comparator: TaskList.compareTaskId,
+                cellRenderer: (params) => {
+                    return (
+                        <a
+                            href={
+                                '/ui/api/worker/' +
+                                params.data.originalTask.taskStatus.nodeId +
+                                '/task/' +
+                                params.data.originalTask.taskStatus.taskId +
+                                '?pretty'
+                            }
+                        >
+                            {getTaskIdSuffix(params.data.originalTask.taskStatus.taskId)}
+                        </a>
+                    )
+                },
+            },
+            {
+                headerName: 'Host',
+                field: 'host',
+                sortable: true,
+                cellRenderer: (params) => (
+                    <a
+                        href={'worker.html?' + params.data.originalTask.taskStatus.nodeId}
+                        className="font-light"
+                        target="_blank"
+                    >
+                        {showPortNumbers
+                            ? getHostAndPort(params.data.originalTask.taskStatus.self)
+                            : getHostname(params.data.originalTask.taskStatus.self)}
+                    </a>
+                ),
+            },
+            {
+                headerName: 'State',
+                field: 'state',
+                sortable: true,
+            },
+            {
+                headerName: 'Pending splits',
+                field: 'splitsPending',
+                headerComponent: PauseIconHeader,
+                sortable: true,
+            },
+            {
+                headerName: '',
+                field: 'splitsRunning',
+                headerComponent: PlayIconHeader,
+                sortable: true,
+            },
+            {
+                headerName: '',
+                field: 'splitsBlocked',
+                headerComponent: BookmarkIconHeader,
+                sortable: true,
+            },
+            {
+                headerName: '',
+                field: 'splitsDone',
+                headerComponent: OkIconHeader,
+                sortable: true,
+            },
+            { headerName: 'Rows', field: 'rows', sortable: true },
+            { headerName: 'Rows/s', field: 'rowsSec', sortable: true },
+            { headerName: 'Bytes', field: 'bytes', sortable: true },
+            { headerName: 'Bytes/s', field: 'bytesSec', sortable: true },
+            { headerName: 'Elapsed', field: 'elapsedTime', sortable: true },
+            { headerName: 'CPU\nTime', field: 'cpuTime', sortable: true, headerClass: 'multi-line-header' },
+            { headerName: 'Mem', field: 'memory', sortable: true },
+            { headerName: 'Peak\nMem', field: 'peakMemory', sortable: true, headerClass: 'multi-line-header' },
+            taskRetriesEnabled ? { headerName: 'Est Mem', field: 'estimatedMemory', sortable: true } : null,
+        ].filter(Boolean)
+
+        const rowData = tasks.map((task) => {
             let elapsedTime = parseDuration(task.stats.elapsedTime)
             if (elapsedTime === 0) {
                 elapsedTime = Date.now() - Date.parse(task.stats.createTime)
             }
 
-            return (
-                <Tr key={task.taskStatus.taskId}>
-                    <Td column="id" value={task.taskStatus.taskId}>
-                        <a
-                            href={
-                                '/ui/api/worker/' +
-                                task.taskStatus.nodeId +
-                                '/task/' +
-                                task.taskStatus.taskId +
-                                '?pretty'
-                            }
-                        >
-                            {getTaskIdSuffix(task.taskStatus.taskId)}
-                        </a>
-                    </Td>
-                    <Td column="host" value={getHostname(task.taskStatus.self)}>
-                        <a href={'worker.html?' + task.taskStatus.nodeId} className="font-light" target="_blank">
-                            {showPortNumbers ? getHostAndPort(task.taskStatus.self) : getHostname(task.taskStatus.self)}
-                        </a>
-                    </Td>
-                    <Td column="state" value={TaskList.formatState(task.taskStatus.state, task.stats.fullyBlocked)}>
-                        {TaskList.formatState(task.taskStatus.state, task.stats.fullyBlocked)}
-                    </Td>
-                    <Td column="rows" value={task.stats.rawInputPositions}>
-                        {formatCount(task.stats.rawInputPositions)}
-                    </Td>
-                    <Td column="rowsSec" value={computeRate(task.stats.rawInputPositions, elapsedTime)}>
-                        {formatCount(computeRate(task.stats.rawInputPositions, elapsedTime))}
-                    </Td>
-                    <Td column="bytes" value={parseDataSize(task.stats.rawInputDataSize)}>
-                        {formatDataSizeBytes(parseDataSize(task.stats.rawInputDataSize))}
-                    </Td>
-                    <Td column="bytesSec" value={computeRate(parseDataSize(task.stats.rawInputDataSize), elapsedTime)}>
-                        {formatDataSizeBytes(computeRate(parseDataSize(task.stats.rawInputDataSize), elapsedTime))}
-                    </Td>
-                    <Td column="splitsPending" value={task.stats.queuedDrivers}>
-                        {task.stats.queuedDrivers}
-                    </Td>
-                    <Td column="splitsRunning" value={task.stats.runningDrivers}>
-                        {task.stats.runningDrivers}
-                    </Td>
-                    <Td column="splitsBlocked" value={task.stats.blockedDrivers}>
-                        {task.stats.blockedDrivers}
-                    </Td>
-                    <Td column="splitsDone" value={task.stats.completedDrivers}>
-                        {task.stats.completedDrivers}
-                    </Td>
-                    <Td column="elapsedTime" value={parseDuration(task.stats.elapsedTime)}>
-                        {task.stats.elapsedTime}
-                    </Td>
-                    <Td column="cpuTime" value={parseDuration(task.stats.totalCpuTime)}>
-                        {task.stats.totalCpuTime}
-                    </Td>
-                    <Td column="bufferedBytes" value={task.outputBuffers.totalBufferedBytes}>
-                        {formatDataSizeBytes(task.outputBuffers.totalBufferedBytes)}
-                    </Td>
-                    <Td column="memory" value={parseDataSize(task.stats.userMemoryReservation)}>
-                        {parseAndFormatDataSize(task.stats.userMemoryReservation)}
-                    </Td>
-                    <Td column="peakMemory" value={parseDataSize(task.stats.peakUserMemoryReservation)}>
-                        {parseAndFormatDataSize(task.stats.peakUserMemoryReservation)}
-                    </Td>
-                    {taskRetriesEnabled && (
-                        <Td column="estimatedMemory" value={parseDataSize(task.estimatedMemory)}>
-                            {parseAndFormatDataSize(task.estimatedMemory)}
-                        </Td>
-                    )}
-                </Tr>
-            )
+            return {
+                id: getTaskIdSuffix(task.taskStatus.taskId),
+                host: showPortNumbers ? getHostAndPort(task.taskStatus.self) : getHostname(task.taskStatus.self),
+                state: TaskList.formatState(task.taskStatus.state, task.stats.fullyBlocked),
+                splitsPending: task.stats.queuedDrivers,
+                splitsRunning: task.stats.runningDrivers,
+                splitsBlocked: task.stats.blockedDrivers,
+                splitsDone: task.stats.completedDrivers,
+                rows: formatCount(task.stats.rawInputPositions),
+                rowsSec: formatCount(computeRate(task.stats.rawInputPositions, elapsedTime)),
+                bytes: formatDataSizeBytes(parseDataSize(task.stats.rawInputDataSize)),
+                bytesSec: formatDataSizeBytes(computeRate(parseDataSize(task.stats.rawInputDataSize), elapsedTime)),
+                elapsedTime: task.stats.elapsedTime,
+                cpuTime: task.stats.totalCpuTime,
+                bufferedBytes: formatDataSizeBytes(task.outputBuffers.totalBufferedBytes),
+                memory: parseAndFormatDataSize(task.stats.userMemoryReservation),
+                peakMemory: parseAndFormatDataSize(task.stats.peakUserMemoryReservation),
+                estimatedMemory: taskRetriesEnabled ? parseAndFormatDataSize(task.estimatedMemory) : null,
+                originalTask: task,
+            }
         })
 
         return (
-            <Table
-                id="tasks"
-                className="table table-striped sortable"
-                sortable={[
-                    {
-                        column: 'id',
-                        sortFunction: TaskList.compareTaskId,
-                    },
-                    'host',
-                    'state',
-                    'splitsPending',
-                    'splitsRunning',
-                    'splitsBlocked',
-                    'splitsDone',
-                    'rows',
-                    'rowsSec',
-                    'bytes',
-                    'bytesSec',
-                    'elapsedTime',
-                    'cpuTime',
-                    'bufferedBytes',
-                    'memory',
-                    'peakMemory',
-                    'estimatedMemory',
-                ]}
-                defaultSort={{ column: 'id', direction: 'asc' }}
-            >
-                <Thead>
-                    <Th column="id">ID</Th>
-                    <Th column="host">Host</Th>
-                    <Th column="state">State</Th>
-                    <Th column="splitsPending">
-                        <span
-                            className="glyphicon glyphicon-pause"
-                            style={GLYPHICON_HIGHLIGHT}
-                            data-toggle="tooltip"
-                            data-placement="top"
-                            title="Pending splits"
-                        />
-                    </Th>
-                    <Th column="splitsRunning">
-                        <span
-                            className="glyphicon glyphicon-play"
-                            style={GLYPHICON_HIGHLIGHT}
-                            data-toggle="tooltip"
-                            data-placement="top"
-                            title="Running splits"
-                        />
-                    </Th>
-                    <Th column="splitsBlocked">
-                        <span
-                            className="glyphicon glyphicon-bookmark"
-                            style={GLYPHICON_HIGHLIGHT}
-                            data-toggle="tooltip"
-                            data-placement="top"
-                            title="Blocked splits"
-                        />
-                    </Th>
-                    <Th column="splitsDone">
-                        <span
-                            className="glyphicon glyphicon-ok"
-                            style={GLYPHICON_HIGHLIGHT}
-                            data-toggle="tooltip"
-                            data-placement="top"
-                            title="Completed splits"
-                        />
-                    </Th>
-                    <Th column="rows">Rows</Th>
-                    <Th column="rowsSec">Rows/s</Th>
-                    <Th column="bytes">Bytes</Th>
-                    <Th column="bytesSec">Bytes/s</Th>
-                    <Th column="elapsedTime">Elapsed</Th>
-                    <Th column="cpuTime">CPU Time</Th>
-                    <Th column="memory">Mem</Th>
-                    <Th column="peakMemory">Peak Mem</Th>
-                    {taskRetriesEnabled && <Th column="estimatedMemory">Est Mem</Th>}
-                </Thead>
-                {renderedTasks}
-            </Table>
+            <div id="tasks" className="ag-theme-alpine-dark ag-theme-custom">
+                <AgGridReact
+                    columnDefs={columnDefs}
+                    rowData={rowData}
+                    defaultColDef={{ sortable: true, resizable: true }}
+                    domLayout="autoHeight"
+                    onGridReady={TaskList.onGridReady}
+                />
+            </div>
         )
     }
 }
